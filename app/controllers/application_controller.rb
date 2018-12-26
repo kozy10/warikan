@@ -1,27 +1,21 @@
 class ApplicationController < ActionController::Base
-end
 
-require 'line/bot'
-require 'sinatra' 
+	require 'sinatra'   # gem 'sinatra'
+  require 'line/bot'  # gem 'line-bot-api'
 
-class ApplicationController < ActionController::Base
-  protect_from_forgery with: :null_session
-
-  before_action :validate_signature
-
-  def validate_signature
-    body = request.body.read
-    signature = request.env['HTTP_X_LINE_SIGNATURE']
-    unless client.validate_signature(body, signature)
-      error 400 do 'Bad Request' end
-    end
-  end
+  THUMBNAIL_URL = 'https://via.placeholder.com/1024x1024'
+  HORIZONTAL_THUMBNAIL_URL = 'https://via.placeholder.com/1024x768'
+  QUICK_REPLY_ICON_URL = 'https://via.placeholder.com/64x64'
 
   def client
-    @client ||= Line::Bot::Client.new { |config|
-      # ローカルで動かすだけならベタ打ちでもOK
-      config.channel_secret = "your channel secret"
-      config.channel_token = "your channel token"
-    }
+    @client ||= Line::Bot::Client.new do |config|
+      config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
+      config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
+      config.http_options = {
+        open_timeout: 5,
+        read_timeout: 5,
+      }
+    end
   end
 end
+
