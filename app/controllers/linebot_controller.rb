@@ -1,25 +1,22 @@
 class LinebotController < ApplicationController
-  protect_from_forgery :except => [:callback]
+  protect_from_forgery :except => [:callback, :index]
+  require 'sinatra'   # gem 'sinatra'
+  require 'line/bot'  # gem 'line-bot-api'
 
   def index
-    render ''
   end
 
-  def reply_text(event, texts)
-    texts = [texts] if texts.is_a?(String)
-    client.reply_message(
-      event['replyToken'],
-      texts.map { |text| {type: 'text', text: text} }
-    )
+  def client
+    @client ||= Line::Bot::Client.new do |config|
+      config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
+      config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
+      config.http_options = {
+        open_timeout: 5,
+        read_timeout: 5,
+      }
+    end
   end
 
-  def reply_content(event, messages)
-    res = client.reply_message(
-      event['replyToken'],
-      messages
-    )
-    puts res.read_body if res.code != 200
-  end
 
   def callback
     body = request.body.read
