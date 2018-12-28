@@ -491,3 +491,4 @@ class LinebotController < ApplicationController
       longitude: message['longitude']
     })
   end
+end
