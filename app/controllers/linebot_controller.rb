@@ -124,7 +124,7 @@ class LinebotController < ApplicationController
             type: 'buttons',
             text: 'ご用件は？',
             actions: [
-              { label: '登録', type: 'uri', uri: 'line://app/1632988548-zW1VrG6k' },
+              { label: '登録', type: 'uri', uri: 'line://app/1632988548-B7qKnvre' },
               { label: '追加', type: 'uri', uri: 'line://app/1632988548-8MyJAo9Z' },
               { label: '明細', type: 'message', text: '▶︎明細' },
               { label: '清算', type: 'message', text: '▶︎清算' },
@@ -153,5 +153,5 @@ private
       config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
     }
   end
-  
+
 end
