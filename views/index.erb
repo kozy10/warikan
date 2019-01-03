@@ -6,9 +6,6 @@
     
     <body>
         <script src="https://d.line-scdn.net/liff/1.0/sdk.js"></script>
-        <%= form_for @team, url: user_teams_path do |f| %>
-          <%= f.label :title, "名前" %>
-          <%= f.text_field :name %>
         <div id='user_name'>Name : XXXX</div>
         <img id='user_photo' src="" width="200px"/>
         <button onclick='clicked()'>send_message</button>

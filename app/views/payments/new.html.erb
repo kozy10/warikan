@@ -1,0 +1,41 @@
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    </head>
+    
+    <body>
+      <script src="https://d.line-scdn.net/liff/1.0/sdk.js"></script>
+      <%= flash[:notice] %>
+      <%= form_for @payment do |f| %>
+        <%= f.hidden_field :payer_id, id: "payer_id" %>
+        <%= f.hidden_field :room_id, id: "room_id" %>
+        <%= f.label :title, "何代?" %>
+        <%= f.text_field :title %>
+        <br>
+        <%= f.label :price, "金額" %>
+        <%= f.text_field :price %>円
+        <br>
+        <%= f.submit "追加する" %>
+      <% end %>
+
+
+      <script>
+        liff.init(
+          data => {
+            const userId = data.context.userId;
+            document.getElementById('room_id').value =  data.context.roomId;
+            liff.getProfile()
+            .then(profile => {
+              document.getElementById('payer_id').value = profile.userId;
+            })
+            .catch((err) => {
+              console.log('error', err);
+            });
+          },
+          err => {
+            // LIFF initialization failed
+          }
+        );
+      </script>
+    </body>
+</html>

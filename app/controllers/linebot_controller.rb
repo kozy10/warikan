@@ -1,12 +1,16 @@
 class LinebotController < ApplicationController
   protect_from_forgery :except => [:callback]
-  
-  def reply_text(event, texts)
-    texts = [texts] if texts.is_a?(String)
-    client.reply_message(
-      event['replyToken'],
-      texts.map { |text| {type: 'text', text: text} }
-    )
+
+  def set_room(event)
+    room = Room.create(room_id: event['source']['roomId'])
+  end
+
+  def reply_text(event, text)
+    message = {
+      type: 'text',
+      text: text
+    }
+    client.reply_message(event['replyToken'], message)
   end
 
   def reply_content(event, messages)
@@ -17,34 +21,86 @@ class LinebotController < ApplicationController
     puts res.read_body if res.code != 200
   end
 
+  def payments_index(event)
+    payments_text = ""
+    total_price = 0
+    room = Room.find_by(room_id: event['source']['roomId'])
+    Payment.where('room_id = ? and check_id = ?', room.room_id, room.check_id).each do |p|
+      title = p.title
+      price = p.price
+      payment_text = "#{p.payer.name}\n#{title}  #{price}円\n\n"
+      payments_text += payment_text
+      total_price += price
+    end
+
+    price_per_person = total_price / room.number_of_members
+    payments_text += "\n----------\n合計金額: #{total_price}円\n1人あたり: #{price_per_person}円"
+    message = {
+      type: 'text',
+      text: payments_text
+    }
+    client.reply_message(event['replyToken'], message)
+  end
+
+  def check(event)
+    dept_text = ""
+    room = Room.find_by(room_id: event['source']['roomId'])
+    total_price = Payment.where('room_id = ? and check_id = ?', room.room_id, room.check_id).sum(:price)
+    price_per_person = total_price / room.number_of_members
+    User.where(room_id: event['source']['roomId']).each do |user|
+      #ユーザーごとの支払い合計額
+      payment_price_by_user = Payment.where('payer_id = ? and room_id = ? and check_id = ?', user.user_id, room.room_id, room.check_id).sum(:price)
+      dept = price_per_person - payment_price_by_user
+      if dept < 0
+        dept_text += "#{user.name}は#{-dept}円もらう\n"
+      elsif dept > 0
+        dept_text += "#{user.name}は#{dept}円払う\n"
+      else
+        dept_text += "#{user.name}は貸し借りが0円\n"
+      end
+    end
+    message = [
+      {type: 'text',
+      text: dept_text},
+      {type: 'template',
+      altText: '清算終了しますか？',
+      template: {
+        type: 'confirm',
+        text: '清算終了しますか？',
+        actions: [
+          { label: 'はい', type: 'message', text: '▶︎はい' },
+          { label: 'いいえ', type: 'message', text: '▶︎いいえ' },
+        ],
+      }}
+    ]
+    client.reply_message(event['replyToken'], message)
+  end
+
+  def checkout(event)
+    room = Room.find_by(room_id: event['source']['roomId'])
+    room.check_id += 1
+    room.save
+  end
+
+
+
+
 
   def callback
+    body = request.body.read
+
+    signature = request.env['HTTP_X_LINE_SIGNATURE']
+    unless client.validate_signature(body, signature)
+      error 400 do 'Bad Request' end
+    end
     events = client.parse_events_from(body)
 
     events.each do |event|
       case event
       when Line::Bot::Event::Message
         handle_message(event)
-
-      when Line::Bot::Event::Follow
-        reply_text(event, "[FOLLOW]\nThank you for following")
-
-      when Line::Bot::Event::Unfollow
-        puts "[UNFOLLOW]\n#{body}"
-
       when Line::Bot::Event::Join
-        reply_text(event, "[JOIN]\n#{event['source']['type']}")
-
-      when Line::Bot::Event::Leave
-        puts "[LEAVE]\n#{body}"
-
-      when Line::Bot::Event::Postback
-        message = "[POSTBACK]\n#{event['postback']['data']} (#{JSON.generate(event['postback']['params'])})"
-        reply_text(event, message)
-
-      when Line::Bot::Event::Beacon
-        reply_text(event, "[BEACON]\n#{JSON.generate(event['beacon'])}")
-
+        set_room(event)
       else
         reply_text(event, "Unknown event type: #{event}")
       end
@@ -55,417 +111,38 @@ class LinebotController < ApplicationController
 
   def handle_message(event)
     case event.type
-    when Line::Bot::Event::MessageType::Image
-      message_id = event.message['id']
-      response = client.get_message_content(message_id)
-      tf = Tempfile.open("content")
-      tf.write(response.body)
-      reply_text(event, "[MessageType::IMAGE]\nid:#{message_id}\nreceived #{tf.size} bytes data")
-    when Line::Bot::Event::MessageType::Video
-      message_id = event.message['id']
-      response = client.get_message_content(message_id)
-      tf = Tempfile.open("content")
-      tf.write(response.body)
-      reply_text(event, "[MessageType::VIDEO]\nid:#{message_id}\nreceived #{tf.size} bytes data")
-    when Line::Bot::Event::MessageType::Audio
-      message_id = event.message['id']
-      response = client.get_message_content(message_id)
-      tf = Tempfile.open("content")
-      tf.write(response.body)
-      reply_text(event, "[MessageType::AUDIO]\nid:#{message_id}\nreceived #{tf.size} bytes data")
-    when Line::Bot::Event::MessageType::File
-      message_id = event.message['id']
-      response = client.get_message_content(message_id)
-      tf = Tempfile.open("content")
-      tf.write(response.body)
-      reply_text(event, "[MessageType::FILE]\nid:#{message_id}\nfileName:#{event.message['fileName']}\nfileSize:#{event.message['fileSize']}\nreceived #{tf.size} bytes data")
-    when Line::Bot::Event::MessageType::Sticker
-      handle_sticker(event)
-    when Line::Bot::Event::MessageType::Location
-      handle_location(event)
     when Line::Bot::Event::MessageType::Text
       case event.message['text']
-      when 'profile'
-        if event['source']['type'] == 'user'
-          profile = client.get_profile(event['source']['userId'])
-          profile = JSON.parse(profile.read_body)
-          reply_text(event, [
-            "Display name\n#{profile['displayName']}",
-            "Status message\n#{profile['statusMessage']}"
-          ])
-        else
-          reply_text(event, "Bot can't use profile API without user ID")
-        end
 
-      when 'buttons'
+      when '@warikan'
         reply_content(event, {
           type: 'template',
-          altText: 'Buttons alt text',
+          altText: 'ご用件は？',
           template: {
             type: 'buttons',
-            thumbnailImageUrl: THUMBNAIL_URL,
-            title: 'My button sample',
-            text: 'Hello, my button',
+            text: 'ご用件は？',
             actions: [
-              { label: 'Go to line.me', type: 'uri', uri: 'https://line.me' },
-              { label: 'Send postback', type: 'postback', data: 'hello world' },
-              { label: 'Send postback2', type: 'postback', data: 'hello world', text: 'hello world' },
-              { label: 'Send message', type: 'message', text: 'This is message' }
+              { label: '登録', type: 'uri', uri: 'line://app/1632988548-ja7K82GZ' },
+              { label: '追加', type: 'uri', uri: 'line://app/1632988548-mE2DrbBK' },
+              { label: '明細', type: 'message', text: '▶︎明細' },
+              { label: '清算', type: 'message', text: '▶︎清算' },
             ]
           }
         })
 
-      when 'confirm'
-        reply_content(event, {
-          type: 'template',
-          altText: 'Confirm alt text',
-          template: {
-            type: 'confirm',
-            text: 'Do it?',
-            actions: [
-              { label: 'Yes', type: 'message', text: 'Yes!' },
-              { label: 'No', type: 'message', text: 'No!' },
-            ],
-          }
-        })
+      when '▶︎明細'
+        payments_index(event)
 
-      when 'carousel'
-        reply_content(event, {
-          type: 'template',
-          altText: 'Carousel alt text',
-          template: {
-            type: 'carousel',
-            columns: [
-              {
-                title: 'hoge',
-                text: 'fuga',
-                actions: [
-                  { label: 'Go to line.me', type: 'uri', uri: 'https://line.me' },
-                  { label: 'Send postback', type: 'postback', data: 'hello world' },
-                  { label: 'Send message', type: 'message', text: 'This is message' }
-                ]
-              },
-              {
-                title: 'Datetime Picker',
-                text: 'Please select a date, time or datetime',
-                actions: [
-                  {
-                    type: 'datetimepicker',
-                    label: "Datetime",
-                    data: 'action=sel',
-                    mode: 'datetime',
-                    initial: '2017-06-18T06:15',
-                    max: '2100-12-31T23:59',
-                    min: '1900-01-01T00:00'
-                  },
-                  {
-                    type: 'datetimepicker',
-                    label: "Date",
-                    data: 'action=sel&only=date',
-                    mode: 'date',
-                    initial: '2017-06-18',
-                    max: '2100-12-31',
-                    min: '1900-01-01'
-                  },
-                  {
-                    type: 'datetimepicker',
-                    label: "Time",
-                    data: 'action=sel&only=time',
-                    mode: 'time',
-                    initial: '12:15',
-                    max: '23:00',
-                    min: '10:00'
-                  }
-                ]
-              }
-            ]
-          }
-        })
+      when '▶︎清算'
+        check(event)
 
-      when 'image carousel'
-        reply_content(event, {
-          type: 'template',
-          altText: 'Image carousel alt text',
-          template: {
-            type: 'image_carousel',
-            columns: [
-              {
-                imageUrl: THUMBNAIL_URL,
-                action: { label: 'line.me', type: 'uri', uri: 'https://line.me' }
-              },
-              {
-                imageUrl: THUMBNAIL_URL,
-                action: { label: 'postback', type: 'postback', data: 'hello world' }
-              },
-              {
-                imageUrl: THUMBNAIL_URL,
-                action: { label: 'message', type: 'message', text: 'This is message' }
-              },
-              {
-                imageUrl: THUMBNAIL_URL,
-                action: {
-                  type: 'datetimepicker',
-                  label: "Datetime",
-                  data: 'action=sel',
-                  mode: 'datetime',
-                  initial: '2017-06-18T06:15',
-                  max: '2100-12-31T23:59',
-                  min: '1900-01-01T00:00'
-                }
-              }
-            ]
-          }
-        })
+      when '▶︎はい'
+        checkout(event)
 
-      when 'imagemap'
-        reply_content(event, {
-          type: 'imagemap',
-          baseUrl: THUMBNAIL_URL,
-          altText: 'Imagemap alt text',
-          baseSize: { width: 1024, height: 1024 },
-          actions: [
-            { area: { x: 0, y: 0, width: 512, height: 512 }, type: 'uri', linkUri: 'https://store.line.me/family/manga/en' },
-            { area: { x: 512, y: 0, width: 512, height: 512 }, type: 'uri', linkUri: 'https://store.line.me/family/music/en' },
-            { area: { x: 0, y: 512, width: 512, height: 512 }, type: 'uri', linkUri: 'https://store.line.me/family/play/en' },
-            { area: { x: 512, y: 512, width: 512, height: 512 }, type: 'message', text: 'Fortune!' },
-          ]
-        })
-
-      when 'flex'
-        reply_content(event, {
-          type: "flex",
-          altText: "this is a flex message",
-          contents: {
-            type: "bubble",
-            header: {
-              type: "box",
-              layout: "vertical",
-              contents: [
-                {
-                  type: "text",
-                  text: "Header text"
-                }
-              ]
-            },
-            hero: {
-              type: "image",
-              url: HORIZONTAL_THUMBNAIL_URL,
-              size: "full",
-              aspectRatio: "4:3"
-            },
-            body: {
-              type: "box",
-              layout: "vertical",
-              contents: [
-                {
-                  type: "text",
-                  text: "Body text",
-                }
-              ]
-            },
-            footer: {
-              type: "box",
-              layout: "vertical",
-              contents: [
-                {
-                  type: "text",
-                  text: "Footer text",
-                  align: "center",
-                  color: "#888888"
-                }
-              ]
-            }
-          }
-        })
-
-      when 'flex carousel'
-        reply_content(event, {
-          type: "flex",
-          altText: "this is a flex carousel",
-          contents: {
-            type: "carousel",
-            contents: [
-              {
-                type: "bubble",
-                body: {
-                  type: "box",
-                  layout: "horizontal",
-                  contents: [
-                    {
-                      type: "text",
-                      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-                      wrap: true
-                    }
-                  ]
-                },
-                footer: {
-                  type: "box",
-                  layout: "horizontal",
-                  contents: [
-                    {
-                      type: "button",
-                      style: "primary",
-                      action: {
-                        type: "uri",
-                        label: "Go",
-                        uri: "https://example.com"
-                      }
-                    }
-                  ]
-                }
-              },
-              {
-                type: "bubble",
-                body: {
-                  type: "box",
-                  layout: "horizontal",
-                  contents: [
-                    {
-                      type: "text",
-                      text: "Hello, World!",
-                      wrap: true
-                    }
-                  ]
-                },
-                footer: {
-                  type: "box",
-                  layout: "horizontal",
-                  contents: [
-                    {
-                      type: "button",
-                      style: "primary",
-                      action: {
-                        type: "uri",
-                        label: "Go",
-                        uri: "https://example.com"
-                      }
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        })
-
-      when 'quickreply'
-        reply_content(event, {
-          type: 'text',
-          text: '[QUICK REPLY]',
-          quickReply: {
-            items: [
-              {
-                type: "action",
-                imageUrl: QUICK_REPLY_ICON_URL,
-                action: {
-                  type: "message",
-                  label: "Sushi",
-                  text: "Sushi"
-                }
-              },
-              {
-                type: "action",
-                action: {
-                  type: "location",
-                  label: "Send location"
-                }
-              },
-              {
-                type: "action",
-                imageUrl: QUICK_REPLY_ICON_URL,
-                action: {
-                  type: "camera",
-                  label: "Open camera",
-                }
-              },
-              {
-                type: "action",
-                imageUrl: QUICK_REPLY_ICON_URL,
-                action: {
-                  type: "cameraRoll",
-                  label: "Open cameraRoll",
-                }
-              },
-              {
-                type: "action",
-                action: {
-                  type: "postback",
-                  label: "buy",
-                  data: "action=buy&itemid=111",
-                  text: "buy",
-                }
-              },
-              {
-                type: "action",
-                action: {
-                  type: "message",
-                  label: "Yes",
-                  text: "Yes"
-                }
-              },
-              {
-                type: "action",
-                action: {
-                  type: "datetimepicker",
-                  label: "Select date",
-                  data: "storeId=12345",
-                  mode: "datetime",
-                  initial: "2017-12-25t00:00",
-                  max: "2018-01-24t23:59",
-                  min: "2017-12-25t00:00"
-                }
-              },
-            ],
-          },
-        })
-
-      when 'bye'
-        case event['source']['type']
-        when 'user'
-          reply_text(event, "[BYE]\nBot can't leave from 1:1 chat")
-        when 'group'
-          reply_text(event, "[BYE]\nLeaving group")
-          client.leave_group(event['source']['groupId'])
-        when 'room'
-          reply_text(event, "[BYE]\nLeaving room")
-          client.leave_room(event['source']['roomId'])
-        end
-
-      else
-        reply_text(event, "[ECHO]\n#{event.message['text']}")
 
       end
-    else
-      puts "Unknown message type: #{event.type}"
-      reply_text(event, "[UNKNOWN]\n#{event.type}")
     end
   end
 
-  def handle_sticker(event)
-    # Message API available stickers
-    # https://developers.line.me/media/messaging-api/sticker_list.pdf
-    msgapi_available = event.message['packageId'].to_i <= 4
-    messages = [{
-      type: 'text',
-      text: "[STICKER]\npackageId: #{event.message['packageId']}\nstickerId: #{event.message['stickerId']}"
-    }]
-    if msgapi_available
-      messages.push(
-        type: 'sticker',
-        packageId: event.message['packageId'],
-        stickerId: event.message['stickerId']
-      )
-    end
-    reply_content(event, messages)
-  end
 
-  def handle_location(event)
-    message = event.message
-    reply_content(event, {
-      type: 'location',
-      title: message['title'] || message['address'],
-      address: message['address'],
-      latitude: message['latitude'],
-      longitude: message['longitude']
-    })
-  end
 end
