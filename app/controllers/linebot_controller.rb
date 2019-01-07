@@ -47,8 +47,6 @@ class LinebotController < ApplicationController
           delete_payment(event, payment_id)
         elsif data.include?("action=checkout")
           checkout(event)
-        elsif data.include?("action=add_payment")
-          add_payment(event)
         end
       else
         reply_text(event, "Unknown event type: #{event}")
@@ -56,11 +54,6 @@ class LinebotController < ApplicationController
     end
 
     "OK"
-  end
-
-  def add_payment
-    @payment = Payment.new
-    binding.pry
   end
 
 
@@ -100,7 +93,7 @@ class LinebotController < ApplicationController
             text: 'ご用件は？',
             actions: [
               { label: '割り勘に参加する', type: 'message', text: '▶︎参加する' },
-              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-LGGYPNoq' },
+              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-pxnoQ9Or' },
               { label: '明細を見る', type: 'message', text: '▶︎明細' },
               { label: '清算をする', type: 'message', text: '▶︎清算' },
             ]
@@ -116,7 +109,7 @@ class LinebotController < ApplicationController
             text: 'ご用件は？',
             actions: [
               { label: '割り勘に参加する', type: 'message', text: '▶︎参加する' },
-              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-LGGYPNoq' },
+              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-pxnoQ9Or' },
               { label: '明細を見る', type: 'message', text: '▶︎明細' },
               { label: '清算をする', type: 'message', text: '▶︎清算' },
             ]
