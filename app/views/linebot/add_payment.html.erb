@@ -2,6 +2,7 @@
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
     </head>
+    
     <body>
       <script src="https://d.line-scdn.net/liff/1.0/sdk.js"></script>
       <div class="container mt-2">
@@ -14,8 +15,6 @@
             <%= f.text_field :title ,placeholder: "例：レンタカー代", class: "form-control mt-3" %>
             <%= f.label :price, "金額 " %>
             <%= f.text_field :price , class: "form-control mt-3" %>円
-            <%= check_box_tag :select_user %>
-            <%= label_tag :select_user, "個別にメンバーの金額を設定する" %>
             <div class="text-center">
               <%= f.submit "支払いを登録", class: "btn btn-danger mt-3" %>
             </div>

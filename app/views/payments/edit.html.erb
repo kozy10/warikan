@@ -14,11 +14,13 @@
             <%= f.text_field :title ,placeholder: "例：レンタカー代", class: "form-control mt-3" %>
             <%= f.label :price, "金額 " %>
             <%= f.text_field :price , class: "form-control mt-3" %>円
-            <%= check_box_tag :select_user %>
-            <%= label_tag :select_user, "個別にメンバーの金額を設定する" %>
             <div class="text-center">
               <%= f.submit "支払いを登録", class: "btn btn-danger mt-3" %>
             </div>
+          <% end %>
+
+          <% @user.each do |user| %>
+            <%= user.name %>
           <% end %>
         </div>
       </div>

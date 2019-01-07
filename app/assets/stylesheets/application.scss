@@ -13,3 +13,10 @@
  *= require_tree .
  *= require_self
  */
+
+@import "bootstrap";
+
+.form-control {
+	display: inline-block;
+	width: 80%;
+}
