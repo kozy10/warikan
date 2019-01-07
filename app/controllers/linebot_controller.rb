@@ -255,7 +255,7 @@ class LinebotController < ApplicationController
       payment_price_by_user = Payment.where('payer_id = ? and room_id = ? and check_id = ?', user.user_id, room.room_id, room.check_id).sum(:price)
       dept = price_per_person - payment_price_by_user
       if dept < 0
-        dept_text += "#{user.name}は#{-dept.to_s(:delimited)}円もらう\n"
+        dept_text += "#{user.name}は#{dept.to_s(:delimited)}円もらう\n"
       elsif dept > 0
         dept_text += "#{user.name}は#{dept.to_s(:delimited)}円払う\n"
       else
