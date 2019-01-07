@@ -169,12 +169,12 @@ class LinebotController < ApplicationController
       },
       {
         type: "text",
-        text: "合計金額: #{total_price}円",
+        text: "合計金額: #{total_price.to_s(:delimited)}円",
         margin: "xl"
       },
       {
         type: "text",
-        text: "一人当たり: #{price_per_person}円",
+        text: "一人当たり: #{price_per_person.to_s(:delimited)}円",
         margin: "xl"
       },
       {
@@ -187,7 +187,7 @@ class LinebotController < ApplicationController
         user_total_price = Payment.where('room_id = ? and check_id = ? and payer_id = ?', room.room_id, room.check_id, user.user_id).sum(:price)
         user_total = {
           type: "text",
-          text: "#{user.name}: #{user_total_price}円",
+          text: "#{user.name}: #{user_total_price.to_s(:delimited)}円",
         }
         first_carousel_contents.push(user_total)
       end
@@ -215,7 +215,7 @@ class LinebotController < ApplicationController
           type: "button",
           height: "sm",
           action: {
-            label: "#{payment.title}: #{payment.price}円",
+            label: "#{payment.title}: #{payment.price.to_s(:delimited)}円",
             type: "postback",
             data: "action=delete_confirm&payment_id=#{payment.id}"
           }
@@ -255,9 +255,9 @@ class LinebotController < ApplicationController
       payment_price_by_user = Payment.where('payer_id = ? and room_id = ? and check_id = ?', user.user_id, room.room_id, room.check_id).sum(:price)
       dept = price_per_person - payment_price_by_user
       if dept < 0
-        dept_text += "#{user.name}は#{-dept}円もらう\n"
+        dept_text += "#{user.name}は#{-dept.to_s(:delimited)}円もらう\n"
       elsif dept > 0
-        dept_text += "#{user.name}は#{dept}円払う\n"
+        dept_text += "#{user.name}は#{dept.to_s(:delimited)}円払う\n"
       else
         dept_text += "#{user.name}は貸し借りが0円\n"
       end
