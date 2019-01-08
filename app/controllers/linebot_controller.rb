@@ -132,7 +132,7 @@ class LinebotController < ApplicationController
   def set_room(event)
     room = Room.create(room_id: event['source']['roomId'])
     reply_text(event, 
-      "warikanの使い方\n\n@warikanまたは@割り勘とメッセージを送信するとメニューが開きます。\n\nまずはメンバー全員が「割り勘に参加する」をタップして下さい。"
+      "warikanの使い方\n\n@warikanまたは@割り勘とメッセージを送信するとメニューが開きます。\n\nまずはメンバー全員が「割り勘に参加する」をタップして下さい。\n\n支払いを削除する場合は、明細から削除したい支払いをタップしてください。"
     )
   end
 
@@ -255,7 +255,7 @@ class LinebotController < ApplicationController
       payment_price_by_user = Payment.where('payer_id = ? and room_id = ? and check_id = ?', user.user_id, room.room_id, room.check_id).sum(:price)
       dept = price_per_person - payment_price_by_user
       if dept < 0
-        dept_text += "#{user.name}は#{dept.to_s(:delimited)}円もらう\n"
+        dept_text += "#{user.name}は#{-dept.to_s(:delimited)}円もらう\n"
       elsif dept > 0
         dept_text += "#{user.name}は#{dept.to_s(:delimited)}円払う\n"
       else
