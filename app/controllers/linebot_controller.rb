@@ -273,8 +273,7 @@ class LinebotController < ApplicationController
       Payment.where('room_id = ? and check_id = ? and  payer_id = ?', room.room_id, room.check_id, user.user_id).each do |payment|
         payments_text += "#{payment.title}: #{payment.price.to_s(:delimited)}円\n"
       end
-      payments_text += "小計: #{payment_price_by_user}円"
-      payments_text += "\n"
+      payments_text += "小計: #{payment_price_by_user.to_s(:delimited)}円\n\n"
     end
     total_price = Payment.where('room_id = ? and check_id = ?', room.room_id, room.check_id).sum(:price)
     price_per_person = total_price / room.number_of_members
