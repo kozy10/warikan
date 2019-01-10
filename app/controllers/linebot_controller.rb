@@ -39,17 +39,21 @@ class LinebotController < ApplicationController
         set_room(event)
       when Line::Bot::Event::Postback
         data = event['postback']['data']
-        if data.include?("action=delete_confirm")
+        if data.include?("action=join")
+          join(event)
+        elsif data.include?("action=payments_index")
+          payments_index_carousel(event)
+        elsif data.include?("action=check")
+          check(event)
+        elsif data.include?('payout')
+          payout(event)
+        elsif data.include?("action=delete_confirm")
           payment_id = data.match(/payment_id=(.*)/)[1]
           delete_confirm(event, payment_id)
         elsif data.include?("action=delete_payment")
           payment_id = data.match(/payment_id=(.*)/)[1]
           delete_payment(event, payment_id)
-        elsif data.include?("action=checkout")
-          checkout(event)
         end
-      else
-        reply_text(event, "Unknown event type: #{event}")
       end
     end
 
@@ -83,8 +87,7 @@ class LinebotController < ApplicationController
     case event.type
     when Line::Bot::Event::MessageType::Text
       case event.message['text']
-      when '@warikan'
-        @room = Room.find_by(room_id: event['source']['roomId'])
+      when '殿'
         reply_content(event, {
           type: 'template',
           altText: 'ご用件は？',
@@ -92,15 +95,15 @@ class LinebotController < ApplicationController
             type: 'buttons',
             text: 'ご用件は？',
             actions: [
-              { label: '割り勘に参加する', type: 'message', text: '▶︎参加する' },
-              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-pxnoQ9Or' },
-              { label: '明細を見る', type: 'message', text: '▶︎明細' },
-              { label: '清算をする', type: 'message', text: '▶︎清算' },
+              { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-xpdaNL4E' },
+              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-93ABRG6p' },
+              { label: '明細を見る', type: 'postback', data: 'action=payments_index' },
+              { label: '精算する', type: 'postback', data: 'action=check' },
             ]
           }
         })
 
-      when '@割り勘'
+      when '割り勘'
         reply_content(event, {
           type: 'template',
           altText: 'ご用件は？',
@@ -108,56 +111,62 @@ class LinebotController < ApplicationController
             type: 'buttons',
             text: 'ご用件は？',
             actions: [
-              { label: '割り勘に参加する', type: 'message', text: '▶︎参加する' },
-              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-pxnoQ9Or' },
-              { label: '明細を見る', type: 'message', text: '▶︎明細' },
-              { label: '清算をする', type: 'message', text: '▶︎清算' },
+              { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-xpdaNL4E' },
+              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-93ABRG6p' },
+              { label: '明細を見る', type: 'postback', data: 'action=payments_index' },
+              { label: '精算する', type: 'postback', data: 'action=check' },
             ]
           }
         })
 
-      when '▶︎明細'
-        payments_index_carousel(event)
+      when '▶︎はい'
+        checkout(event)
 
-      when '▶︎清算'
+      when '▶︎精算'
         check(event)
-
-      when '▶︎参加する'
-        join(event)
-
       end
+
+
     end
   end
 
   def set_room(event)
-    room = Room.create(room_id: event['source']['roomId'])
-    reply_text(event, 
-      "warikanの使い方\n\n@warikanまたは@割り勘とメッセージを送信するとメニューが開きます。\n\nまずはメンバー全員が「割り勘に参加する」をタップして下さい。\n\n支払いを削除する場合は、明細から削除したい支払いをタップしてください。"
-    )
+    room = Room.create(room_id: event['source']['roomId'] || event['source']['groupId'])
+    message = [
+      {type: 'text',
+      text: "warikanの使い方\n\n「割り勘」とメッセージを送信するとメニューが開きます。\n\nまずはメンバー全員が下の「割り勘に参加する」をタップしてください。"},
+      {type: 'template',
+      altText: '割り勘に参加する',
+      template: {
+        type: 'buttons',
+        text: '下のボタンをタップしてください。',
+        actions: [
+          { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-xpdaNL4E' },
+        ],
+      }}
+    ]
+    client.reply_message(event['replyToken'], message)
   end
 
   def join(event)
     user = User.new
     user.user_id = event['source']['userId']
-    user.room_id = event['source']['roomId']
-    response = client.get_profile(user.user_id)
-    case response
-      when Net::HTTPSuccess 
-        profile = JSON.parse(response.body)
-        user.name = profile['displayName']
-      else
-        p "エラーが発生しました"
-      end
+    user.room_id = event['source']['roomId'] || event['source']['groupId']
+    response = client.get_profile(event['source']['userId'])
+    profile = JSON.parse(response.read_body)
+    user.name = profile['displayName']
     if user.save
       room = Room.find_by(room_id: user.room_id)
       room.number_of_members += 1
       room.save
       reply_text(event, "#{user.name}さんが参加しました。")
+    else
+      reply_text(event, "#{user.name}さんはすでに参加済です。")
     end
   end
 
   def payments_index_carousel(event)
-    room = Room.find_by(room_id: event['source']['roomId'])
+    room = Room.find_by(room_id: event['source']['roomId'] || event['source']['groupId'])
     total_price = Payment.where('room_id = ? and check_id = ?', room.room_id, room.check_id).sum(:price)
     price_per_person = total_price / room.number_of_members
     contents = []
@@ -234,28 +243,38 @@ class LinebotController < ApplicationController
       contents.push(user_carousel)
     end
 
-    message = {
-      type: "flex",
-      altText: "明細",
-      contents: {
-        type: "carousel",
-        contents: contents
+
+
+    message = [
+      {
+        type: "flex",
+        altText: "明細",
+        contents: {
+          type: "carousel",
+          contents: contents
+        }
+      },
+      {
+        type: "text",
+        text: "支払いをタップすると削除することができます。"
+
       }
-    }
+    ]
     client.reply_message(event['replyToken'], message)
   end
 
   def check(event)
     dept_text = ""
-    room = Room.find_by(room_id: event['source']['roomId'])
+    room = Room.find_by(room_id: event['source']['roomId'] || event['source']['groupId'])
     total_price = Payment.where('room_id = ? and check_id = ?', room.room_id, room.check_id).sum(:price)
     price_per_person = total_price / room.number_of_members
-    User.where(room_id: event['source']['roomId']).each do |user|
+    User.where(room_id: room.room_id).each do |user|
       #ユーザーごとの支払い合計額
       payment_price_by_user = Payment.where('payer_id = ? and room_id = ? and check_id = ?', user.user_id, room.room_id, room.check_id).sum(:price)
       dept = price_per_person - payment_price_by_user
       if dept < 0
-        dept_text += "#{user.name}は#{-dept.to_s(:delimited)}円もらう\n"
+        dept = -dept
+        dept_text += "#{user.name}は#{dept.to_s(:delimited)}円もらう\n"
       elsif dept > 0
         dept_text += "#{user.name}は#{dept.to_s(:delimited)}円払う\n"
       else
@@ -263,24 +282,28 @@ class LinebotController < ApplicationController
       end
     end
     message = [
-      {type: 'text',
-      text: dept_text},
-      {type: 'template',
-      altText: '清算終了しますか？',
-      template: {
-        type: 'confirm',
-        text: '清算終了して会計をリセットしますか？',
-        actions: [
-          { label: 'はい', type: 'postback', data: 'action=checkout' },
-          { label: 'いいえ', type: 'message', text: '▶︎いいえ' },
-        ],
-      }}
+      {
+        type: 'text',
+        text: dept_text
+      },
+      {
+        type: 'template',
+        altText: '精算終了しますか？',
+        template: {
+          type: 'confirm',
+          text: '精算終了して会計をリセットしますか？',
+          actions: [
+            { label: 'はい', type: 'postback', data: 'payout' },
+            { label: 'いいえ', type: 'message', text: '▶︎いいえ' },
+          ]
+        }
+      }
     ]
     client.reply_message(event['replyToken'], message)
   end
 
-  def checkout(event)
-    room = Room.find_by(room_id: event['source']['roomId'])
+  def payout(event)
+    room = Room.find_by(room_id: event['source']['roomId'] || event['source']['groupId'])
     room.check_id += 1
     room.save
     reply_text(event, "会計をリセットしました。")
@@ -291,7 +314,7 @@ private
   def client
     @client ||= Line::Bot::Client.new { |config|
       config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
-      config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
+      config.channel_token = "6mzIjNk1cV5SIo5QWgZfJA2A5OLqddnCkd0bIuW/lwn2fpnXJU78ZM4zqH9gBlOnbNGlfhO4m2eBQmskny0Vw2w0cYdV5Wx+itUYcp2k6flCh5oTXGAYPE9m5fGSPnOwI7HCZfwe30cLfccmQ/K0nlGUYhWQfeY8sLGRXgo3xvw="
     }
   end
 

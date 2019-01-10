@@ -13,9 +13,9 @@
             <%= f.label :title, "内容 " %>
             <%= f.text_field :title ,placeholder: "例：レンタカー代", class: "form-control mt-3" %>
             <%= f.label :price, "金額 " %>
-            <%= f.text_field :price , class: "form-control mt-3" %>円
-            <%= check_box_tag :select_user %>
-            <%= label_tag :select_user, "個別にメンバーの金額を設定する" %>
+            <%= f.text_field :price , type:"tel", class: "form-control mt-3" %>円
+<!--             <%= check_box_tag :select_user %>
+            <%= label_tag :select_user, "個別にメンバーの金額を設定する" %> -->
             <div class="text-center">
               <%= f.submit "支払いを登録", class: "btn btn-danger mt-3" %>
             </div>
@@ -27,7 +27,7 @@
         liff.init(
           data => {
             const userId = data.context.userId;
-            document.getElementById('room_id').value =  data.context.roomId;
+            document.getElementById('room_id').value =  data.context.roomId || data.context.groupId;
             liff.getProfile()
             .then(profile => {
               document.getElementById('payer_id').value = profile.userId;
