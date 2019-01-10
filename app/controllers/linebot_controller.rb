@@ -263,11 +263,25 @@ class LinebotController < ApplicationController
     client.reply_message(event['replyToken'], message)
   end
 
+
   def check(event)
-    dept_text = ""
+    payments_text = ""
     room = Room.find_by(room_id: event['source']['roomId'] || event['source']['groupId'])
+    User.where(room_id: room.room_id).each do |user|
+      payment_price_by_user = Payment.where('payer_id = ? and room_id = ? and check_id = ?', user.user_id, room.room_id, room.check_id).sum(:price)
+      payments_text += "#{user.name}\n"
+      Payment.where('room_id = ? and check_id = ? and  payer_id = ?', room.room_id, room.check_id, user.user_id).each do |payment|
+        payments_text += "#{payment.title}: #{payment.price.to_s(:delimited)}円\n"
+      end
+      payments_text += "小計: #{payment_price_by_user}円"
+      payments_text += "\n"
+    end
     total_price = Payment.where('room_id = ? and check_id = ?', room.room_id, room.check_id).sum(:price)
     price_per_person = total_price / room.number_of_members
+    payments_text += "\n----------\n合計金額: #{total_price.to_s(:delimited)}円\n1人あたり: #{price_per_person.to_s(:delimited)}円"
+
+
+    dept_text = ""
     User.where(room_id: room.room_id).each do |user|
       #ユーザーごとの支払い合計額
       payment_price_by_user = Payment.where('payer_id = ? and room_id = ? and check_id = ?', user.user_id, room.room_id, room.check_id).sum(:price)
@@ -282,6 +296,10 @@ class LinebotController < ApplicationController
       end
     end
     message = [
+      {
+        type: 'text',
+        text: payments_text
+      },
       {
         type: 'text',
         text: dept_text
