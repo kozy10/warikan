@@ -314,7 +314,7 @@ private
   def client
     @client ||= Line::Bot::Client.new { |config|
       config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
-      config.channel_token = "6mzIjNk1cV5SIo5QWgZfJA2A5OLqddnCkd0bIuW/lwn2fpnXJU78ZM4zqH9gBlOnbNGlfhO4m2eBQmskny0Vw2w0cYdV5Wx+itUYcp2k6flCh5oTXGAYPE9m5fGSPnOwI7HCZfwe30cLfccmQ/K0nlGUYhWQfeY8sLGRXgo3xvw="
+      config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
     }
   end
 
