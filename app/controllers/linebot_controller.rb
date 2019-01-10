@@ -95,8 +95,8 @@ class LinebotController < ApplicationController
             type: 'buttons',
             text: 'ご用件は？',
             actions: [
-              { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-xpdaNL4E' },
-              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-93ABRG6p' },
+              { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-YR6QRBw4' },
+              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-1axlpDN3' },
               { label: '明細を見る', type: 'postback', data: 'action=payments_index' },
               { label: '精算する', type: 'postback', data: 'action=check' },
             ]
@@ -111,8 +111,8 @@ class LinebotController < ApplicationController
             type: 'buttons',
             text: 'ご用件は？',
             actions: [
-              { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-xpdaNL4E' },
-              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-93ABRG6p' },
+              { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-YR6QRBw4' },
+              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-1axlpDN3' },
               { label: '明細を見る', type: 'postback', data: 'action=payments_index' },
               { label: '精算する', type: 'postback', data: 'action=check' },
             ]
@@ -141,7 +141,7 @@ class LinebotController < ApplicationController
         type: 'buttons',
         text: '下のボタンをタップしてください。',
         actions: [
-          { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-xpdaNL4E' },
+          { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-YR6QRBw4' },
         ],
       }}
     ]
