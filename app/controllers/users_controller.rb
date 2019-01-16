@@ -10,9 +10,9 @@ class UsersController < ApplicationController
 			room = Room.find_by(room_id: @user.room_id)
 			room.number_of_members += 1
 			room.save
-			flash[:notice] = "登録されました。"
+			flash[:notice] = "参加しました。"
 		else
-			flash[:notice] = "登録できません。"
+			flash[:notice] = "参加できません。"
 		end
 		redirect_to new_user_path
 	end

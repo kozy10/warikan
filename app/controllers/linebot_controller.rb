@@ -125,8 +125,6 @@ class LinebotController < ApplicationController
       when '▶︎精算'
         check(event)
       end
-
-
     end
   end
 
