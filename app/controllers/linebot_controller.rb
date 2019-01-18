@@ -95,8 +95,8 @@ class LinebotController < ApplicationController
             type: 'buttons',
             text: 'ご用件は？',
             actions: [
-              { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-YR6QRBw4' },
-              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-1axlpDN3' },
+              { label: '割り勘に参加する', type: 'uri', uri: ENV["LINE_LIFF_USERS_DEV"] },
+              { label: '支払いを登録する', type: 'uri', uri: ENV["LINE_LIFF_PAYMENTS_DEV"] },
               { label: '明細を見る', type: 'postback', data: 'action=payments_index' },
               { label: '精算する', type: 'postback', data: 'action=check' },
             ]
@@ -111,8 +111,8 @@ class LinebotController < ApplicationController
             type: 'buttons',
             text: 'ご用件は？',
             actions: [
-              { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-YR6QRBw4' },
-              { label: '支払いを登録する', type: 'uri', uri: 'line://app/1632988548-1axlpDN3' },
+              { label: '割り勘に参加する', type: 'uri', uri: ENV["LINE_LIFF_USERS_DEV"] },
+              { label: '支払いを登録する', type: 'uri', uri: ENV["LINE_LIFF_PAYMENTS_DEV"] },
               { label: '明細を見る', type: 'postback', data: 'action=payments_index' },
               { label: '精算する', type: 'postback', data: 'action=check' },
             ]
@@ -328,8 +328,8 @@ class LinebotController < ApplicationController
 private
   def client
     @client ||= Line::Bot::Client.new { |config|
-      config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
-      config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
+      config.channel_secret = "fd1780fff8adee1b0c69f90f443c3bfa"
+      config.channel_token = "QQAYqXiOi8ASLNQ6TOYjvkwKwRHtWWbXtgKD63Z5SniYpYPq5MpmsInkJc9Z6Ortzqh12Ju41vZlJlsZWm5oJYsher0cUvUZMzdqAqu64tLmv4VOuBItatsRYjBkQO5MTXFP093Gx0BlH6KVlABfTgdB04t89/1O/w1cDnyilFU="
     }
   end
 

@@ -12,7 +12,7 @@ class UsersController < ApplicationController
 			room.save
 			flash[:notice] = "参加しました。"
 		else
-			flash[:notice] = "参加できません。"
+			flash[:notice] = "すでに参加しています。"
 		end
 		redirect_to new_user_path
 	end
