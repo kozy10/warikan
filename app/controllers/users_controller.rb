@@ -11,13 +11,17 @@ class UsersController < ApplicationController
 			room.number_of_members += 1
 			room.save
 			flash[:notice] = "参加しました。"
+			redirect_to users_complete_path
 		else
 			flash[:notice] = "すでに参加しています。"
+			redirect_to users_error_path
 		end
-		redirect_to users_complete_path
 	end
 
 	def complete
+	end
+
+	def error
 	end
 
 	private

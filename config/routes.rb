@@ -3,4 +3,5 @@ Rails.application.routes.draw do
 	resources :payments, only: [:new, :create, :edit, :update]
 	resources :users, only: [:new, :create]
 	get '/users/complete' => 'users#complete'
+	get '/users/error' => 'users#error'
 end
