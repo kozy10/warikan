@@ -14,7 +14,7 @@ class UsersController < ApplicationController
 		else
 			flash[:notice] = "すでに参加しています。"
 		end
-		redirect_to users_complete
+		redirect_to users_complete_path
 	end
 
 	def complete
