@@ -132,16 +132,9 @@ class LinebotController < ApplicationController
     room = Room.create(room_id: event['source']['roomId'] || event['source']['groupId'])
     message = [
       {type: 'text',
-      text: "warikanの使い方\n\n「割り勘」とメッセージを送信するとメニューが開きます。\n\nまずはメンバー全員が下の「割り勘に参加する」をタップしてください。"},
-      {type: 'template',
-      altText: '割り勘に参加する',
-      template: {
-        type: 'buttons',
-        text: '下のボタンをタップしてください。',
-        actions: [
-          { label: '割り勘に参加する', type: 'uri', uri: 'line://app/1632988548-YR6QRBw4' },
-        ],
-      }}
+      text: "わが名は割り勘様なり👺\n\n おぬしらの割り勘はわしが引き受けよう。"},
+      {type: 'text',
+      text: "まずは 「 わりかん 」 とメッセージを送信するのじゃ。\n\n 割り勘メニューが表示されるぞい😤"},
     ]
     client.reply_message(event['replyToken'], message)
   end
